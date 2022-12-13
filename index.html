@@ -19,6 +19,7 @@
             const BOX_SZ = 100;
             const MAX_SAFE_HEIGHT = game.height * 10;
             const GAME_MARGIN = 50;
+            const PROD = window.location.href.includes("github.io");
 
             game.width = window.innerWidth - GAME_MARGIN * 2;
             game.height = window.innerHeight - GAME_MARGIN * 2;
@@ -36,8 +37,10 @@
             let character = new Image(BOX_SZ);
             let characterReversed = new Image(BOX_SZ);
 
-            character.src = "/character.png";
-            characterReversed.src = "/character_reversed.png";
+            character.src = PROD ? window.location.href + "/character.png" : "/character.png";
+            characterReversed.src = PROD
+                ? window.location.href + "/character_reversed.png"
+                : "/character_reversed.png";
 
             const draw = () => {
                 cx.clearRect(0, 0, game.width, game.height);
