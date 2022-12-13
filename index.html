@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Platformer</title>
+    </head>
+    <body>
+        <canvas id="game"></canvas>
+        <script>
+            /** @type {HTMLCanvasElement} */
+            const game = document.getElementById("game");
+            const cx = game.getContext("2d");
+
+            const GRAVITY = 1000;
+            const RESTITUTION = 0.4;
+            const FRICTION = 0.5;
+            const BOX_SZ = 100;
+            const MAX_SAFE_HEIGHT = game.height * 10;
+            const GAME_MARGIN = 50;
+
+            game.width = window.innerWidth - GAME_MARGIN * 2;
+            game.height = window.innerHeight - GAME_MARGIN * 2;
+            game.style.top = GAME_MARGIN + "px";
+            game.style.left = GAME_MARGIN + "px";
+
+            let box = {
+                pos: [0, 0],
+                velo: [0, 0],
+                accel: [0, -1 * GRAVITY],
+            };
+            let lastFrameTime = null;
+            let lastFacingRight = true;
+
+            let character = new Image(BOX_SZ);
+            let characterReversed = new Image(BOX_SZ);
+
+            character.src = "/character.png";
+            characterReversed.src = "/character_reversed.png";
+
+            const draw = () => {
+                cx.clearRect(0, 0, game.width, game.height);
+                cx.drawImage(
+                    lastFacingRight ? characterReversed : character,
+                    (game.width - BOX_SZ) / 2 + box.pos[0],
+                    game.height - BOX_SZ - box.pos[1]
+                );
+            };
+            draw(box);
+
+            const tick = (deltaTime) => {
+                box.velo[0] += box.accel[0] * deltaTime;
+                if (box.velo[1] !== 0) {
+                    box.velo[1] += box.accel[1] * deltaTime;
+                }
+
+                box.pos[0] += box.velo[0] * deltaTime;
+                box.pos[1] += box.velo[1] * deltaTime;
+
+                if (box.velo[0] > 0) lastFacingRight = true;
+                else if (box.velo[0] < 0) lastFacingRight = false;
+            };
+
+            const determineBounce1 = (deltaTime, boxIndex, minPos, maxPos) => {
+                if (box.velo[boxIndex] === 0) return;
+                const veloAlpha = Math.abs(box.accel[boxIndex] * deltaTime);
+
+                // if box is below minpos:
+                //      if box velo is negligible, just set to 0 (stops accelerating)
+                //      if box velo is real, bounce
+                if (box.pos[boxIndex] < minPos) {
+                    if (Math.abs(box.velo[boxIndex]) < veloAlpha) {
+                        box.velo[boxIndex] = 0;
+                    } else if (Math.abs(box.velo[boxIndex]) > veloAlpha) {
+                        box.pos[boxIndex] = minPos;
+                        box.velo[boxIndex] = RESTITUTION * box.velo[boxIndex] * -1;
+                    }
+                }
+
+                if (box.pos[boxIndex] > maxPos) {
+                    if (Math.abs(box.velo[boxIndex]) < veloAlpha) {
+                        box.velo[boxIndex] = 0;
+                    } else if (Math.abs(box.velo[boxIndex]) > veloAlpha) {
+                        box.pos[boxIndex] = maxPos;
+                        box.velo[boxIndex] = RESTITUTION * box.velo[boxIndex] * -1;
+                    }
+                }
+            };
+
+            const determineBounce = (deltaTime) => {
+                determineBounce1(
+                    deltaTime,
+                    0,
+                    (-1 * (game.width - BOX_SZ)) / 2,
+                    (game.width - BOX_SZ) / 2
+                );
+                determineBounce1(deltaTime, 1, 0, MAX_SAFE_HEIGHT);
+            };
+
+            const determineFriction = (deltaTime) => {
+                const veloAlpha = Math.abs(box.accel[0] * deltaTime);
+
+                if (box.pos[1] <= 0) {
+                    if (Math.abs(box.velo[0]) < veloAlpha) {
+                        box.velo[0] = 0;
+                        box.accel[0] = 0;
+                    } else if (Math.abs(box.velo[0]) > veloAlpha) {
+                        box.accel[0] = GRAVITY * FRICTION * (box.velo[0] > 0 ? -1 : 1);
+                    }
+                } else {
+                    box.accel[0] = 0;
+                }
+            };
+
+            const update = (time) => {
+                lastFrameTime ??= time - 1;
+                const deltaTime = (time - lastFrameTime) / 1000;
+
+                tick(deltaTime);
+                lastFrameTime = time;
+                draw();
+                determineBounce(deltaTime);
+                determineFriction(deltaTime);
+
+                requestAnimationFrame(update);
+            };
+
+            const jump = () => {
+                box.velo[1] += 400;
+            };
+
+            const right = () => {
+                box.velo[0] += 200;
+                box.accel[0] = FRICTION;
+            };
+
+            const left = () => {
+                box.velo[0] -= 200;
+                box.accel[0] = -FRICTION;
+            };
+
+            document.addEventListener("keydown", (e) => {
+                switch (e.keyCode) {
+                    case 37:
+                        left();
+                        break;
+                    case 38:
+                        jump();
+                        break;
+                    case 39:
+                        right();
+                        break;
+                }
+            });
+
+            requestAnimationFrame(update);
+        </script>
+        <style>
+            body {
+                margin: 0;
+            }
+            #game {
+                border: 1px solid black;
+                position: absolute;
+            }
+        </style>
+    </body>
+</html>
